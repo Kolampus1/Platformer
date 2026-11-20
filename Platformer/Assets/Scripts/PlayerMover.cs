@@ -1,23 +1,17 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D))]
 public class PlayerMover : MonoBehaviour
 {
-    private const string HorizontalAxis = "Horizontal";
-
+    [SerializeField] private InputReader _inputReader;
+    [SerializeField] private GroundDetector _groundDetector;
+    [SerializeField] private PlayerAnimator _playerAnimator;
+    [SerializeField] private CharacterRotator _characterRotator;
     [SerializeField] private float _moveSpeed;
     [SerializeField] private float _jumpForce;
 
     private Rigidbody2D _rigidbody;
-    private float _horizontalInput;
-    private bool _isGrounded;
-    private bool _isJumping;
     private bool _jumpRequested;
-
-    public float HorizontalInput => _horizontalInput;
-    public bool IsMoving => _horizontalInput != 0f;
-    public bool IsGrounded => _isGrounded;
-    public bool IsJumping => _isJumping;
+    private bool _isJumping;
 
     private void Awake()
     {
@@ -26,41 +20,42 @@ public class PlayerMover : MonoBehaviour
 
     private void Update()
     {
-        _horizontalInput = Input.GetAxisRaw(HorizontalAxis);
+        float horizontalInput = _inputReader.HorizontalInput;
+        _characterRotator.SetFacingDirection(horizontalInput);
 
-        if (Input.GetKeyDown(KeyCode.Space) && _isGrounded)
+        if (_inputReader.ConsumeJumpPress() && _groundDetector.IsGrounded)
         {
-            _isGrounded = false;
             _isJumping = true;
             _jumpRequested = true;
         }
+
+        if (_isJumping && _groundDetector.IsGrounded && _jumpRequested == false && _rigidbody.linearVelocity.y <= 0f)
+            _isJumping = false;
+
+        bool isRunning = horizontalInput != 0f && _groundDetector.IsGrounded && _isJumping == false;
+
+        _playerAnimator.SetRunning(isRunning);
+        _playerAnimator.SetJumping(_isJumping);
     }
 
     private void FixedUpdate()
     {
         Vector2 velocity = _rigidbody.linearVelocity;
 
-        _rigidbody.linearVelocity = new Vector2(_horizontalInput * _moveSpeed, velocity.y);
+        _rigidbody.linearVelocity = new Vector2(_inputReader.HorizontalInput * _moveSpeed, velocity.y);
 
-        if (_jumpRequested)
+        if (_jumpRequested == false)
+            return;
+
+        if (_groundDetector.IsGrounded)
         {
             _rigidbody.AddForce(Vector2.up * _jumpForce, ForceMode2D.Impulse);
-            _jumpRequested = false;
         }
-    }
-
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        if (collision.gameObject.TryGetComponent(out Ground ground))
+        else
         {
-            _isGrounded = true;
             _isJumping = false;
         }
-    }
 
-    private void OnCollisionExit2D(Collision2D collision)
-    {
-        if (collision.gameObject.TryGetComponent(out Ground ground))
-            _isGrounded = false;
+        _jumpRequested = false;
     }
 }

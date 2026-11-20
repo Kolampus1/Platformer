@@ -43,7 +43,6 @@ public class CoinSpawner : MonoBehaviour
         var wait = new WaitForSeconds(delay);
         yield return wait;
 
-        if (spawnPoint != null)
-            SpawnCoinAt(spawnPoint);
+        SpawnCoinAt(spawnPoint);
     }
 }

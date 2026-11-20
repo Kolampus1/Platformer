@@ -4,6 +4,8 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class EnemyMover : MonoBehaviour
 {
+    [SerializeField] private CharacterRotator _characterRotator;
+    [SerializeField] private EnemyAnimator _enemyAnimator;
     [SerializeField] private Transform _firstPoint;
     [SerializeField] private Transform _secondPoint;
     [SerializeField] private float _speed;
@@ -13,9 +15,6 @@ public class EnemyMover : MonoBehaviour
     private Rigidbody2D _rigidbody;
     private Transform _target;
     private bool _isWaiting;
-
-    public bool IsMoving => _target != null && _isWaiting == false && _speed > 0f;
-    public bool IsMovingRight { get; private set; }
 
     private void Awake()
     {
@@ -42,26 +41,30 @@ public class EnemyMover : MonoBehaviour
         {
             _isWaiting = true;
             StopHorizontalMovement();
+            _enemyAnimator.SetWalking(false);
             StartCoroutine(WaitAtPoint());
             return;
         }
 
-        IsMovingRight = distanceX > 0f;
+        _characterRotator.SetFacingDirection(distanceX);
+        _enemyAnimator.SetWalking(_speed > 0f);
 
         Vector2 velocity = _rigidbody.linearVelocity;
-        float horizontalSpeed = IsMovingRight ? _speed : -_speed;
+        float horizontalSpeed = distanceX > 0 ? _speed : -_speed;
 
         _rigidbody.linearVelocity = new Vector2(horizontalSpeed, velocity.y);
     }
 
     private IEnumerator WaitAtPoint()
     {
-        yield return new WaitForSeconds(_pauseDuration);
+        var wait = new WaitForSeconds(_pauseDuration);
+        yield return wait;
 
         _target = _target == _secondPoint ? _firstPoint : _secondPoint;
-
         UpdateDirection();
+
         _isWaiting = false;
+        _enemyAnimator.SetWalking(_speed > 0f);
     }
 
     private void StopHorizontalMovement()
@@ -72,6 +75,7 @@ public class EnemyMover : MonoBehaviour
 
     private void UpdateDirection()
     {
-        IsMovingRight = _target.position.x > _rigidbody.position.x;
+        float direction = _target.position.x - _rigidbody.position.x;
+        _characterRotator.SetFacingDirection(direction);
     }
 }
